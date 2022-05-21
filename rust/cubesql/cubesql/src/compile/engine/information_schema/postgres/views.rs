@@ -13,7 +13,7 @@ use datafusion::{
     physical_plan::{memory::MemoryExec, ExecutionPlan},
 };
 
-struct InformationSchemaViewsBuilder {
+struct InfoSchemaViewsBuilder {
     table_catalog: StringBuilder,
     table_schema: StringBuilder,
     table_name: StringBuilder,
@@ -26,7 +26,7 @@ struct InformationSchemaViewsBuilder {
     is_trigger_insertable_into: StringBuilder,
 }
 
-impl InformationSchemaViewsBuilder {
+impl InfoSchemaViewsBuilder {
     fn new() -> Self {
         let capacity = 1;
 
@@ -67,7 +67,7 @@ pub struct InfoSchemaViewsProvider {
 
 impl InfoSchemaViewsProvider {
     pub fn new() -> Self {
-        let builder = InformationSchemaViewsBuilder::new();
+        let builder = InfoSchemaViewsBuilder::new();
 
         Self {
             data: Arc::new(builder.finish()),

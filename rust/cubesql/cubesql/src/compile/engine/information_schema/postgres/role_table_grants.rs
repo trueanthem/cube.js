@@ -53,8 +53,8 @@ impl InfoSchemaRoleTableGrantsBuilder {
         self.table_schema.append_value(&table_schema).unwrap();
         self.table_name.append_value(&table_name).unwrap();
         self.privilege_type.append_value(&privilege_type).unwrap();
-        self.is_grantable.append_value(&"YES").unwrap();
-        self.with_hierarchy.append_value(&"YES").unwrap();
+        self.is_grantable.append_value("YES").unwrap();
+        self.with_hierarchy.append_value("YES").unwrap();
     }
 
     fn finish(mut self) -> Vec<Arc<dyn Array>> {
@@ -77,11 +77,17 @@ pub struct InfoSchemaRoleTableGrantsProvider {
 }
 
 impl InfoSchemaRoleTableGrantsProvider {
-    pub fn new(current_user: String, cubes: &Vec<V1CubeMeta>) -> Self {
+    pub fn new(current_user: String, database: impl AsRef<str>, cubes: &Vec<V1CubeMeta>) -> Self {
         let mut builder = InfoSchemaRoleTableGrantsBuilder::new(cubes.len());
 
         for cube in cubes {
-            builder.add_table(&current_user, "db", "public", cube.name.clone(), "SELECT");
+            builder.add_table(
+                &current_user,
+                &database,
+                "public",
+                cube.name.clone(),
+                "SELECT",
+            );
         }
 
         Self {

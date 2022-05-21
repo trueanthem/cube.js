@@ -4,10 +4,7 @@ use async_trait::async_trait;
 
 use datafusion::{
     arrow::{
-        array::{
-            Array, ArrayRef, BooleanBuilder, Int32Builder, ListBuilder, StringBuilder,
-            UInt32Builder,
-        },
+        array::{Array, ArrayRef, BooleanBuilder, Int32Builder, ListBuilder, StringBuilder},
         datatypes::{DataType, Field, Schema, SchemaRef},
         record_batch::RecordBatch,
     },
@@ -18,24 +15,25 @@ use datafusion::{
 };
 
 struct PgDatabase<'a> {
-    oid: u32,
+    oid: i32,
     datname: &'a str,
 }
 
 struct PgCatalogDatabaseBuilder {
-    oid: UInt32Builder,
+    oid: Int32Builder,
     datname: StringBuilder,
-    datdba: UInt32Builder,
+    datdba: Int32Builder,
     encoding: Int32Builder,
     datcollate: StringBuilder,
     datctype: StringBuilder,
     datistemplate: BooleanBuilder,
     datallowconn: BooleanBuilder,
     datconnlimit: Int32Builder,
-    datlastsysoid: UInt32Builder,
-    datfrozenxid: UInt32Builder,
-    datminmxid: UInt32Builder,
-    dattablespace: UInt32Builder,
+    datlastsysoid: Int32Builder,
+    datfrozenxid: Int32Builder,
+    datminmxid: Int32Builder,
+    dattablespace: Int32Builder,
+    // TODO: type aclitem?
     datacl: ListBuilder<StringBuilder>,
 }
 
@@ -44,19 +42,19 @@ impl PgCatalogDatabaseBuilder {
         let capacity = 1;
 
         Self {
-            oid: UInt32Builder::new(capacity),
+            oid: Int32Builder::new(capacity),
             datname: StringBuilder::new(capacity),
-            datdba: UInt32Builder::new(capacity),
+            datdba: Int32Builder::new(capacity),
             encoding: Int32Builder::new(capacity),
             datcollate: StringBuilder::new(capacity),
             datctype: StringBuilder::new(capacity),
             datistemplate: BooleanBuilder::new(capacity),
             datallowconn: BooleanBuilder::new(capacity),
             datconnlimit: Int32Builder::new(capacity),
-            datlastsysoid: UInt32Builder::new(capacity),
-            datfrozenxid: UInt32Builder::new(capacity),
-            datminmxid: UInt32Builder::new(capacity),
-            dattablespace: UInt32Builder::new(capacity),
+            datlastsysoid: Int32Builder::new(capacity),
+            datfrozenxid: Int32Builder::new(capacity),
+            datminmxid: Int32Builder::new(capacity),
+            dattablespace: Int32Builder::new(capacity),
             datacl: ListBuilder::new(StringBuilder::new(capacity)),
         }
     }
@@ -129,19 +127,19 @@ impl TableProvider for PgCatalogDatabaseProvider {
 
     fn schema(&self) -> SchemaRef {
         Arc::new(Schema::new(vec![
-            Field::new("oid", DataType::UInt32, false),
+            Field::new("oid", DataType::Int32, false),
             Field::new("datname", DataType::Utf8, false),
-            Field::new("datdba", DataType::UInt32, false),
+            Field::new("datdba", DataType::Int32, false),
             Field::new("encoding", DataType::Int32, false),
             Field::new("datcollate", DataType::Utf8, false),
             Field::new("datctype", DataType::Utf8, false),
             Field::new("datistemplate", DataType::Boolean, false),
             Field::new("datallowconn", DataType::Boolean, false),
             Field::new("datconnlimit", DataType::Int32, false),
-            Field::new("datlastsysoid", DataType::UInt32, false),
-            Field::new("datfrozenxid", DataType::UInt32, false),
-            Field::new("datminmxid", DataType::UInt32, false),
-            Field::new("dattablespace", DataType::UInt32, false),
+            Field::new("datlastsysoid", DataType::Int32, false),
+            Field::new("datfrozenxid", DataType::Int32, false),
+            Field::new("datminmxid", DataType::Int32, false),
+            Field::new("dattablespace", DataType::Int32, false),
             Field::new(
                 "datacl",
                 DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),

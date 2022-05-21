@@ -46,7 +46,7 @@ impl InformationSchemaProcesslistBuilder {
     }
 
     fn add_row(&mut self, process_list: SessionProcessList) {
-        self.id.append_value(process_list.id).unwrap();
+        self.id.append_value(process_list.id as u32).unwrap();
 
         if let Some(user) = process_list.user {
             self.user.append_value(user).unwrap();

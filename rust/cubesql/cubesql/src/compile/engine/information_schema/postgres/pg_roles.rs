@@ -5,7 +5,7 @@ use datafusion::{
     arrow::{
         array::{
             Array, ArrayRef, BooleanBuilder, Int32Builder, ListBuilder, StringBuilder,
-            TimestampNanosecondBuilder, UInt32Builder,
+            TimestampNanosecondBuilder,
         },
         datatypes::{DataType, Field, Schema, SchemaRef, TimeUnit},
         record_batch::RecordBatch,
@@ -29,7 +29,7 @@ struct PgCatalogRolesBuilder {
     rolvaliduntil: TimestampNanosecondBuilder,
     rolbypassrls: BooleanBuilder,
     rolconfig: ListBuilder<StringBuilder>,
-    oid: UInt32Builder,
+    oid: Int32Builder,
 }
 
 impl PgCatalogRolesBuilder {
@@ -47,16 +47,16 @@ impl PgCatalogRolesBuilder {
             rolvaliduntil: TimestampNanosecondBuilder::new(capacity),
             rolbypassrls: BooleanBuilder::new(capacity),
             rolconfig: ListBuilder::new(StringBuilder::new(capacity)),
-            oid: UInt32Builder::new(capacity),
+            oid: Int32Builder::new(capacity),
         }
     }
 
-    fn add_role(&mut self, rolname: &str) {
-        self.rolname.append_value(rolname).unwrap();
+    fn add_role(&mut self, rolname: impl AsRef<str>) {
+        self.rolname.append_value(&rolname).unwrap();
         self.rolsuper.append_value(true).unwrap();
         self.rolinherit.append_value(true).unwrap();
         self.rolcreaterole.append_value(false).unwrap();
-        self.rolcreatedb.append_value(true).unwrap();
+        self.rolcreatedb.append_value(false).unwrap();
         self.rolcanlogin.append_value(true).unwrap();
         self.rolreplication.append_value(false).unwrap();
         self.rolconnlimit.append_value(-1).unwrap();
@@ -122,7 +122,7 @@ impl TableProvider for PgCatalogRolesProvider {
             Field::new("rolcanlogin", DataType::Boolean, false),
             Field::new("rolreplication", DataType::Boolean, false),
             Field::new("rolconnlimit", DataType::Int32, false),
-            Field::new("rolpassword", DataType::Utf8, false),
+            Field::new("rolpassword", DataType::Utf8, true),
             Field::new(
                 "rolvaliduntil",
                 DataType::Timestamp(TimeUnit::Nanosecond, None),
@@ -134,7 +134,7 @@ impl TableProvider for PgCatalogRolesProvider {
                 DataType::List(Box::new(Field::new("item", DataType::Utf8, true))),
                 true,
             ),
-            Field::new("oid", DataType::UInt32, false),
+            Field::new("oid", DataType::Int32, false),
         ]))
     }
 

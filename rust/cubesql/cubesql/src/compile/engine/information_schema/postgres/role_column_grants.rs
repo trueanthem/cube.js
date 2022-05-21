@@ -79,18 +79,18 @@ pub struct InfoSchemaRoleColumnGrantsProvider {
 }
 
 impl InfoSchemaRoleColumnGrantsProvider {
-    pub fn new(current_user: String, cubes: &Vec<V1CubeMeta>) -> Self {
+    pub fn new(current_user: String, database: impl AsRef<str>, cubes: &Vec<V1CubeMeta>) -> Self {
         let mut builder = InfoSchemaRoleColumnGrantsBuilder::new(cubes.len());
 
         for cube in cubes {
             for column in cube.get_columns() {
                 builder.add_column(
                     &current_user,
-                    "db",
+                    &database,
                     "public",
                     cube.name.clone(),
                     &column.get_name(),
-                    &"SELECT",
+                    "SELECT",
                 );
             }
         }
