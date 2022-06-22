@@ -9,9 +9,10 @@ use crate::{
             outer_projection_split_replacer, projection, projection_expr,
             projection_expr_empty_tail, rewrite, rewriter::RewriteRules,
             rules::members::MemberRules, transforming_chain_rewrite, transforming_rewrite,
-            AggregateFunctionExprFun, AliasExprAlias, ColumnExprColumn, CubeScanTableName,
-            InnerAggregateSplitReplacerCube, LogicalPlanLanguage, OuterAggregateSplitReplacerCube,
-            OuterProjectionSplitReplacerCube, ProjectionAlias, TableScanSourceTableName,
+            udf_expr, AggregateFunctionExprFun, AliasExprAlias, ColumnExprColumn,
+            CubeScanTableName, InnerAggregateSplitReplacerCube, LogicalPlanLanguage,
+            OuterAggregateSplitReplacerCube, OuterProjectionSplitReplacerCube, ProjectionAlias,
+            TableScanSourceTableName,
         },
     },
     transport::V1CubeMetaExt,
@@ -379,6 +380,31 @@ impl RewriteRules for SplitRules {
                     false,
                 ),
             ),
+            transforming_chain_rewrite(
+                "split-push-down-date-part-outer-projection-replacer",
+                outer_projection_split_replacer(
+                    fun_expr(
+                        "DatePart",
+                        vec![literal_expr("?granularity"), "?expr".to_string()],
+                    ),
+                    "?cube",
+                ),
+                vec![("?expr", column_expr("?column"))],
+                fun_expr(
+                    "DatePart",
+                    vec![
+                        literal_expr("?granularity"),
+                        alias_expr("?alias_column", "?alias"),
+                    ],
+                ),
+                MemberRules::transform_original_expr_date_trunc(
+                    "?expr",
+                    "?granularity",
+                    "?alias_column",
+                    Some("?alias"),
+                    false,
+                ),
+            ),
             // Aggregate function
             transforming_rewrite(
                 "split-push-down-aggr-fun-inner-replacer",
@@ -532,6 +558,68 @@ impl RewriteRules for SplitRules {
                 fun_expr(
                     "Trunc",
                     vec![outer_aggregate_split_replacer("?expr", "?cube")],
+                ),
+            ),
+            transforming_chain_rewrite(
+                "split-push-down-to-char-with-date-trunc-inner-replacer",
+                inner_aggregate_split_replacer(
+                    udf_expr(
+                        "to_char",
+                        vec!["?expr".to_string(), literal_expr("?format")],
+                    ),
+                    "?cube",
+                ),
+                vec![(
+                    "?expr",
+                    fun_expr(
+                        "DateTrunc",
+                        vec![literal_expr("?granularity"), column_expr("?column")],
+                    ),
+                )],
+                alias_expr(
+                    fun_expr(
+                        "DateTrunc",
+                        vec![literal_expr("?granularity"), column_expr("?column")],
+                    ),
+                    "?alias",
+                ),
+                MemberRules::transform_original_expr_date_trunc(
+                    "?expr",
+                    "?granularity",
+                    "?alias_column",
+                    Some("?alias"),
+                    true,
+                ),
+            ),
+            transforming_chain_rewrite(
+                "split-push-down-to-char-with-date-trunc-outer-projection-replacer",
+                outer_projection_split_replacer(
+                    udf_expr(
+                        "to_char",
+                        vec!["?expr".to_string(), literal_expr("?format")],
+                    ),
+                    "?cube",
+                ),
+                vec![(
+                    "?expr",
+                    fun_expr(
+                        "DateTrunc",
+                        vec![literal_expr("?granularity"), column_expr("?column")],
+                    ),
+                )],
+                udf_expr(
+                    "to_char",
+                    vec![
+                        alias_expr("?alias_column", "?alias"),
+                        literal_expr("?format"),
+                    ],
+                ),
+                MemberRules::transform_original_expr_date_trunc(
+                    "?expr",
+                    "?granularity",
+                    "?alias_column",
+                    Some("?alias"),
+                    false,
                 ),
             ),
         ]

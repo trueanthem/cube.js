@@ -274,6 +274,118 @@ impl RewriteRules for DateRules {
                     ],
                 ),
             ),
+            // TODO: check ?inner_data_type == "date"
+            // TODO: check ?outer_data_type == "varchar"
+            rewrite(
+                "skyvia-day-to-date-trunc",
+                cast_expr(
+                    cast_expr(
+                        fun_expr(
+                            "DateTrunc",
+                            vec![literal_string("day"), column_expr("?column")],
+                        ),
+                        "?inner_data_type",
+                    ),
+                    "?outer_data_type",
+                ),
+                fun_expr(
+                    "DateTrunc",
+                    vec![literal_string("day"), column_expr("?column")],
+                ),
+            ),
+            // TODO: check ?data_type == "varchar"
+            // TODO: ?two
+            rewrite(
+                "skyvia-month-to-date-trunc",
+                binary_expr(
+                    binary_expr(
+                        cast_expr(
+                            fun_expr(
+                                "DatePart",
+                                vec![literal_string("YEAR"), column_expr("?column")],
+                            ),
+                            "?data_type",
+                        ),
+                        "||",
+                        literal_string(","),
+                    ),
+                    "||",
+                    fun_expr(
+                        "Lpad",
+                        vec![
+                            cast_expr(
+                                fun_expr(
+                                    "DatePart",
+                                    vec![literal_string("MONTH"), column_expr("?column")],
+                                ),
+                                "?data_type",
+                            ),
+                            "?two".to_string(),
+                            literal_string("0"),
+                        ],
+                    ),
+                ),
+                udf_expr(
+                    "to_char",
+                    vec![
+                        fun_expr(
+                            "DateTrunc",
+                            vec![literal_string("month"), column_expr("?column")],
+                        ),
+                        literal_string("YYYY,MM"),
+                    ],
+                ),
+            ),
+            // TODO: check ?data_type == "varchar"
+            rewrite(
+                "skyvia-quarter-to-date-trunc",
+                binary_expr(
+                    binary_expr(
+                        cast_expr(
+                            fun_expr(
+                                "DatePart",
+                                vec![literal_string("YEAR"), column_expr("?column")],
+                            ),
+                            "?data_type",
+                        ),
+                        "||",
+                        literal_string(","),
+                    ),
+                    "||",
+                    cast_expr(
+                        fun_expr(
+                            "DatePart",
+                            vec![literal_string("QUARTER"), column_expr("?column")],
+                        ),
+                        "?data_type",
+                    ),
+                ),
+                udf_expr(
+                    "to_char",
+                    vec![
+                        fun_expr(
+                            "DateTrunc",
+                            vec![literal_string("quarter"), column_expr("?column")],
+                        ),
+                        literal_string("YYYY,Q"),
+                    ],
+                ),
+            ),
+            // TODO: check ?data_type == "varchar"
+            rewrite(
+                "skyvia-year-to-date-trunc",
+                cast_expr(
+                    fun_expr(
+                        "DatePart",
+                        vec![literal_string("YEAR"), column_expr("?column")],
+                    ),
+                    "?data_type",
+                ),
+                fun_expr(
+                    "DatePart",
+                    vec![literal_string("year"), column_expr("?column")],
+                ),
+            ),
         ]
     }
 }

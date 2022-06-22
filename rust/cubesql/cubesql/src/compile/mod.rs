@@ -9416,10 +9416,10 @@ ORDER BY \"COUNT(count)\" DESC"
     fn metabase_interval_date_range_filter() {
         let logical_plan = convert_select_to_query_plan(
             "
-            SELECT COUNT(*) 
-            FROM KibanaSampleDataEcommerce 
+            SELECT COUNT(*)
+            FROM KibanaSampleDataEcommerce
             WHERE KibanaSampleDataEcommerce.order_date >= CAST((CAST(now() AS timestamp) + (INTERVAL '-30 day')) AS date);
-            ".to_string(), 
+            ".to_string(),
             DatabaseProtocol::PostgreSQL
         ).as_logical_plan();
 
@@ -9525,5 +9525,54 @@ ORDER BY \"COUNT(count)\" DESC"
                 filters: None
             }
         )
+    }
+
+    #[test]
+    fn test_date_granularity_skyvia() {
+        let supported_granularities = vec![
+            // Day
+            ["CAST(DATE_TRUNC('day', t.\"order_date\")::date AS varchar)", "day"],
+            // Day of Month
+            ["EXTRACT(DAY FROM t.\"order_date\")", "day"],
+            // Month
+            ["EXTRACT(YEAR FROM t.\"order_date\")::varchar || ',' || LPAD(EXTRACT(MONTH FROM t.\"order_date\")::varchar, 2, '0')", "month"],
+            // Month of Year
+            ["EXTRACT(MONTH FROM t.\"order_date\")", "month"],
+            // Quarter
+            ["EXTRACT(YEAR FROM t.\"order_date\")::varchar || ',' || EXTRACT(QUARTER FROM t.\"order_date\")::varchar", "quarter"],
+            // Quarter of Year
+            ["EXTRACT(QUARTER FROM t.\"order_date\")", "quarter"],
+            // Year
+            ["CAST(EXTRACT(YEAR FROM t.\"order_date\") AS varchar)", "year"],
+        ];
+
+        for [expr, expected_granularity] in supported_granularities {
+            let logical_plan = convert_select_to_query_plan(
+                format!(
+                    "SELECT {} AS expr1 FROM public.\"KibanaSampleDataEcommerce\" AS t",
+                    expr
+                ),
+                DatabaseProtocol::PostgreSQL,
+            )
+            .as_logical_plan();
+
+            assert_eq!(
+                logical_plan.find_cube_scan().request,
+                V1LoadRequestQuery {
+                    measures: Some(vec![]),
+                    dimensions: Some(vec![]),
+                    segments: Some(vec![]),
+                    time_dimensions: Some(vec![V1LoadRequestQueryTimeDimension {
+                        dimension: "KibanaSampleDataEcommerce.order_date".to_string(),
+                        granularity: Some(expected_granularity.to_string()),
+                        date_range: None,
+                    }]),
+                    order: None,
+                    limit: None,
+                    offset: None,
+                    filters: None
+                }
+            )
+        }
     }
 }

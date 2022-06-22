@@ -1,6 +1,6 @@
 use std::{any::type_name, sync::Arc};
 
-use chrono::{Duration, NaiveDateTime};
+use chrono::{Datelike, Duration, NaiveDateTime};
 use datafusion::{
     arrow::{
         array::{
@@ -1017,6 +1017,7 @@ fn postgres_datetime_format_to_iso(format: String) -> String {
         .replace("%s", "%S")
         .replace(".%f", "%.f")
         .replace("YYYY", "%Y")
+        .replace("Q", "%q")
         .replace("DD", "%d")
         .replace("HH24", "%H")
         .replace("MI", "%M")
@@ -1148,15 +1149,18 @@ pub fn create_to_char_udf() -> ScalarUDF {
 
             for (i, duration) in durations.iter().enumerate() {
                 let format = formats.value(i);
-                let replaced_format =
+                let format =
                     postgres_datetime_format_to_iso(format.to_string()).replace("TZ", &timezone);
 
                 let secs = duration.num_seconds();
                 let nanosecs = duration.num_nanoseconds().unwrap_or(0) - secs * 1_000_000_000;
                 let timestamp = NaiveDateTime::from_timestamp(secs, nanosecs as u32);
 
+                // chrono's strftime is missing quarter format, as such a workaround is required
+                let quarter = &format!("{}", timestamp.date().month0() / 3 + 1);
+                let format = format.replace("%q", quarter);
                 builder
-                    .append_value(timestamp.format(&replaced_format).to_string())
+                    .append_value(timestamp.format(&format).to_string())
                     .unwrap();
             }
 
