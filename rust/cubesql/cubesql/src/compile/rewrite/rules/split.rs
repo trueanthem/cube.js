@@ -9,9 +9,10 @@ use crate::{
             outer_aggregate_split_replacer, outer_projection_split_replacer, projection,
             projection_expr, projection_expr_empty_tail, rewrite, rewriter::RewriteRules,
             rules::members::MemberRules, transforming_chain_rewrite, transforming_rewrite,
-            AggregateFunctionExprFun, AliasExprAlias, ColumnExprColumn, CubeScanTableName,
-            InnerAggregateSplitReplacerCube, LogicalPlanLanguage, OuterAggregateSplitReplacerCube,
-            OuterProjectionSplitReplacerCube, ProjectionAlias, TableScanSourceTableName,
+            udf_expr, AggregateFunctionExprFun, AliasExprAlias, ColumnExprColumn,
+            CubeScanTableName, InnerAggregateSplitReplacerCube, LogicalPlanLanguage,
+            OuterAggregateSplitReplacerCube, OuterProjectionSplitReplacerCube, ProjectionAlias,
+            TableScanSourceTableName,
         },
     },
     transport::V1CubeMetaExt,
@@ -746,6 +747,78 @@ impl RewriteRules for SplitRules {
                 fun_expr(
                     "Trunc",
                     vec![outer_aggregate_split_replacer("?expr", "?cube")],
+                ),
+            ),
+            // to_char
+            transforming_chain_rewrite(
+                "split-push-down-aggr-fun-to-char-inner-aggr-replacer",
+                inner_aggregate_split_replacer(
+                    cast_expr(
+                        udf_expr("to_char", vec!["?expr".to_string(), literal_string("MMDD")]),
+                        "?data_type",
+                    ),
+                    "?cube",
+                ),
+                vec![(
+                    "?expr",
+                    fun_expr(
+                        "DateTrunc",
+                        vec![
+                            literal_expr("?date_trunc_granularity"),
+                            column_expr("?column"),
+                        ],
+                    ),
+                )],
+                alias_expr(
+                    fun_expr(
+                        "DateTrunc",
+                        vec![literal_string("day"), column_expr("?column")],
+                    ),
+                    "?alias",
+                ),
+                MemberRules::transform_original_expr_date_trunc(
+                    "?expr",
+                    "?date_trunc_granularity",
+                    "?alias_column",
+                    Some("?alias"),
+                    true,
+                ),
+            ),
+            transforming_chain_rewrite(
+                "split-push-down-aggr-fun-to-char-outer-aggr-replacer",
+                outer_aggregate_split_replacer(
+                    cast_expr(
+                        udf_expr("to_char", vec!["?expr".to_string(), literal_string("MMDD")]),
+                        "?data_type",
+                    ),
+                    "?cube",
+                ),
+                vec![(
+                    "?expr",
+                    fun_expr(
+                        "DateTrunc",
+                        vec![
+                            literal_expr("?date_trunc_granularity"),
+                            column_expr("?column"),
+                        ],
+                    ),
+                )],
+                cast_expr(
+                    udf_expr(
+                        "to_char",
+                        vec![
+                            alias_expr("?alias_column", "?alias"),
+                            literal_string("MMDD"),
+                        ],
+                    ),
+                    "?data_type",
+                ),
+                MemberRules::transform_original_expr_date_trunc(
+                    "?expr",
+                    "?date_trunc_granularity",
+                    "?alias_column",
+                    Some("?alias"),
+                    false,
                 ),
             ),
         ]
