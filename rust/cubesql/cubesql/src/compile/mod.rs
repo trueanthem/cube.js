@@ -10097,7 +10097,7 @@ ORDER BY \"COUNT(count)\" DESC"
         for [expr, expected_granularity] in supported_granularities {
             let logical_plan = convert_select_to_query_plan(
                 format!(
-                    "SELECT {} AS \"qt_u3dj8wr1vc\" FROM KibanaSampleDataEcommerce GROUP BY \"qt_u3dj8wr1vc\"",
+                    "SELECT {} AS \"qt_u3dj8wr1vc\", COUNT(1) AS \"__record_count\" FROM KibanaSampleDataEcommerce GROUP BY \"qt_u3dj8wr1vc\"",
                     expr
                 ),
                 DatabaseProtocol::PostgreSQL,
@@ -10107,7 +10107,7 @@ ORDER BY \"COUNT(count)\" DESC"
             assert_eq!(
                 logical_plan.find_cube_scan().request,
                 V1LoadRequestQuery {
-                    measures: Some(vec![]),
+                    measures: Some(vec!["KibanaSampleDataEcommerce.count".to_string()]),
                     dimensions: Some(vec![]),
                     segments: Some(vec![]),
                     time_dimensions: Some(vec![V1LoadRequestQueryTimeDimension {
