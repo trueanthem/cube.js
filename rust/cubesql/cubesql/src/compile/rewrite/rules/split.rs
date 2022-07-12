@@ -580,7 +580,7 @@ impl RewriteRules for SplitRules {
                     "?cube",
                 ),
                 inner_aggregate_split_replacer("?expr", "?cube"),
-                self.split_binary("?original_op", "?original_literal", "?op", "?literal"),
+                self.split_binary("?original_op", "?original_literal", None),
             ),
             transforming_rewrite(
                 "split-push-down-binary-outer-replacer",
@@ -593,7 +593,11 @@ impl RewriteRules for SplitRules {
                     "?op",
                     literal_expr("?literal"),
                 ),
-                self.split_binary("?original_op", "?original_literal", "?op", "?literal"),
+                self.split_binary(
+                    "?original_op",
+                    "?original_literal",
+                    Some(("?op", "?literal")),
+                ),
             ),
             transforming_rewrite(
                 "split-push-down-binary-outer-aggr-replacer",
@@ -606,7 +610,11 @@ impl RewriteRules for SplitRules {
                     "?op",
                     literal_expr("?literal"),
                 ),
-                self.split_binary("?original_op", "?original_literal", "?op", "?literal"),
+                self.split_binary(
+                    "?original_op",
+                    "?original_literal",
+                    Some(("?op", "?literal")),
+                ),
             ),
             // Cast
             rewrite(
@@ -903,13 +911,10 @@ impl SplitRules {
         &self,
         binary_op_var: &'static str,
         literal_expr_var: &'static str,
-        return_binary_op_var: &'static str,
-        return_literal_expr_var: &'static str,
+        return_vars: Option<(&'static str, &'static str)>,
     ) -> impl Fn(&mut EGraph<LogicalPlanLanguage, LogicalPlanAnalysis>, &mut Subst) -> bool {
         let binary_op_var = var!(binary_op_var);
         let literal_expr_var = var!(literal_expr_var);
-        let return_binary_op_var = var!(return_binary_op_var);
-        let return_literal_expr_var = var!(return_literal_expr_var);
 
         move |egraph, subst| {
             for operator in var_iter!(egraph[subst[binary_op_var]], BinaryExprOp).cloned() {
@@ -940,17 +945,22 @@ impl SplitRules {
                         continue;
                     }
 
-                    subst.insert(
-                        return_binary_op_var,
-                        egraph.add(LogicalPlanLanguage::BinaryExprOp(BinaryExprOp(operator))),
-                    );
+                    if let Some((return_binary_op_var, return_literal_expr_var)) = return_vars {
+                        let return_binary_op_var = var!(return_binary_op_var);
+                        let return_literal_expr_var = var!(return_literal_expr_var);
 
-                    subst.insert(
-                        return_literal_expr_var,
-                        egraph.add(LogicalPlanLanguage::LiteralExprValue(LiteralExprValue(
-                            scalar,
-                        ))),
-                    );
+                        subst.insert(
+                            return_binary_op_var,
+                            egraph.add(LogicalPlanLanguage::BinaryExprOp(BinaryExprOp(operator))),
+                        );
+
+                        subst.insert(
+                            return_literal_expr_var,
+                            egraph.add(LogicalPlanLanguage::LiteralExprValue(LiteralExprValue(
+                                scalar,
+                            ))),
+                        );
+                    }
 
                     return true;
                 }
