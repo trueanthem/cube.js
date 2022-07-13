@@ -3,21 +3,22 @@ use crate::{
         engine::provider::CubeContext,
         rewrite::{
             analysis::{ConstantFolding, LogicalPlanAnalysis},
-            between_expr, binary_expr, case_expr, case_expr_var_arg, cast_expr, column_expr,
-            cube_scan, cube_scan_filters, cube_scan_members, dimension_expr, expr_column_name,
-            filter, filter_cast_unwrap_replacer, filter_member, filter_op, filter_op_filters,
-            filter_replacer, fun_expr, fun_expr_var_arg, inlist_expr, is_not_null_expr,
-            is_null_expr, limit, literal_expr, literal_string, measure_expr, member_name_by_alias,
-            not_expr, projection, rewrite,
+            between_expr, binary_expr, case_expr, case_expr_var_arg, cast_expr, change_user_member,
+            column_expr, cube_scan, cube_scan_filters, cube_scan_members, dimension_expr,
+            expr_column_name, filter, filter_cast_unwrap_replacer, filter_member, filter_op,
+            filter_op_filters, filter_replacer, fun_expr, fun_expr_var_arg, inlist_expr,
+            is_not_null_expr, is_null_expr, limit, literal_expr, literal_string, measure_expr,
+            member_name_by_alias, not_expr, projection, rewrite,
             rewriter::RewriteRules,
             scalar_fun_expr_args, scalar_fun_expr_args_empty_tail, segment_member,
             time_dimension_date_range_replacer, time_dimension_expr, transforming_rewrite,
-            BetweenExprNegated, BinaryExprOp, ColumnExprColumn, CubeScanLimit, CubeScanTableName,
-            FilterMemberMember, FilterMemberOp, FilterMemberValues, FilterReplacerCube,
-            FilterReplacerTableName, InListExprNegated, LimitN, LiteralExprValue,
-            LogicalPlanLanguage, SegmentMemberMember, TableScanSourceTableName,
-            TimeDimensionDateRange, TimeDimensionDateRangeReplacerDateRange,
-            TimeDimensionDateRangeReplacerMember, TimeDimensionGranularity, TimeDimensionName,
+            BetweenExprNegated, BinaryExprOp, ChangeUserMemberMember, ColumnExprColumn,
+            CubeScanLimit, CubeScanTableName, FilterMemberMember, FilterMemberOp,
+            FilterMemberValues, FilterReplacerCube, FilterReplacerTableName, InListExprNegated,
+            LimitN, LiteralExprValue, LogicalPlanLanguage, SegmentMemberMember,
+            TableScanSourceTableName, TimeDimensionDateRange,
+            TimeDimensionDateRangeReplacerDateRange, TimeDimensionDateRangeReplacerMember,
+            TimeDimensionGranularity, TimeDimensionName,
         },
     },
     transport::{ext::V1CubeMetaExt, MemberType, MetaContext},
@@ -236,6 +237,25 @@ impl RewriteRules for FilterRules {
                     "?members",
                     "?table_name",
                     "?segment",
+                ),
+            ),
+            transforming_rewrite(
+                "change-user-replacer",
+                filter_replacer(
+                    binary_expr(column_expr("?column"), "?op", literal_expr("?literal")),
+                    "?cube",
+                    "?members",
+                    "?table_name",
+                ),
+                change_user_member("?user"),
+                self.transform_change_user(
+                    "?column",
+                    "?op",
+                    "?literal",
+                    "?cube",
+                    "?members",
+                    "?table_name",
+                    "?user",
                 ),
             ),
             rewrite(
@@ -1011,7 +1031,7 @@ impl FilterRules {
                         table_name_var,
                     ) {
                         if let Some(member_type) = cube.member_type(&member_name) {
-                            // Segments are handled by separate rule
+                            // Segments + __user are handled by separate rule
                             if cube.lookup_measure_by_member_name(&member_name).is_some()
                                 || cube.lookup_dimension_by_member_name(&member_name).is_some()
                             {
@@ -1168,6 +1188,60 @@ impl FilterRules {
                                         segment_member_var,
                                         egraph.add(LogicalPlanLanguage::SegmentMemberMember(
                                             SegmentMemberMember(member_name.to_string()),
+                                        )),
+                                    );
+
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            false
+        }
+    }
+
+    fn transform_change_user(
+        &self,
+        column_var: &'static str,
+        op_var: &'static str,
+        literal_var: &'static str,
+        cube_var: &'static str,
+        members_var: &'static str,
+        table_name_var: &'static str,
+        segment_member_var: &'static str,
+    ) -> impl Fn(&mut EGraph<LogicalPlanLanguage, LogicalPlanAnalysis>, &mut Subst) -> bool {
+        let column_var = column_var.parse().unwrap();
+        let op_var = op_var.parse().unwrap();
+        let literal_var = literal_var.parse().unwrap();
+        let cube_var = cube_var.parse().unwrap();
+        let members_var = var!(members_var);
+        let table_name_var = var!(table_name_var);
+        let segment_member_var = segment_member_var.parse().unwrap();
+        let meta_context = self.cube_context.meta.clone();
+
+        move |egraph, subst| {
+            for expr_op in var_iter!(egraph[subst[op_var]], BinaryExprOp) {
+                for literal in var_iter!(egraph[subst[literal_var]], LiteralExprValue) {
+                    if expr_op == &Operator::Eq {
+                        if let ScalarValue::Utf8(Some(change_user)) = literal {
+                            println!("change-user member {}", column_var);
+                            println!("change-user {}", change_user);
+
+                            for column in
+                                var_iter!(egraph[subst[column_var]], ColumnExprColumn).cloned()
+                            {
+                                println!("change-user column.name {}", column.name);
+
+                                if column.name.eq_ignore_ascii_case("__name") {
+                                    println!("change-user done {}", column.name);
+
+                                    subst.insert(
+                                        segment_member_var,
+                                        egraph.add(LogicalPlanLanguage::ChangeUserMemberMember(
+                                            ChangeUserMemberMember(column.name.to_string()),
                                         )),
                                     );
 

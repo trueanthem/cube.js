@@ -3,8 +3,9 @@ use crate::{
         engine::provider::CubeContext,
         rewrite::{
             converter::{is_expr_node, node_to_expr},
-            AliasExprAlias, ColumnExprColumn, DimensionName, LiteralExprValue, LogicalPlanLanguage,
-            MeasureName, SegmentName, TableScanSourceTableName, TimeDimensionName,
+            AliasExprAlias, ChangeUserName, ColumnExprColumn, DimensionName, LiteralExprValue,
+            LogicalPlanLanguage, MeasureName, SegmentName, TableScanSourceTableName,
+            TimeDimensionName,
         },
     },
     var_iter, CubeError,
@@ -134,6 +135,16 @@ impl LogicalPlanAnalysis {
                 if let Some(_) = column_name(params[1]) {
                     let expr = original_expr(params[1])?;
                     let segment_name = var_iter!(egraph[params[0]], SegmentName).next().unwrap();
+                    map.push((segment_name.to_string(), expr));
+                    Some(map)
+                } else {
+                    None
+                }
+            }
+            LogicalPlanLanguage::ChangeUser(params) => {
+                if let Some(_) = column_name(params[1]) {
+                    let expr = original_expr(params[1])?;
+                    let segment_name = var_iter!(egraph[params[0]], ChangeUserName).next().unwrap();
                     map.push((segment_name.to_string(), expr));
                     Some(map)
                 } else {

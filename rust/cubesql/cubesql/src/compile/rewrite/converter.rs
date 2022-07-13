@@ -7,17 +7,18 @@ use crate::{
         rewrite::{
             analysis::LogicalPlanAnalysis, rewriter::Rewriter, AggregateFunctionExprDistinct,
             AggregateFunctionExprFun, AggregateUDFExprFun, AliasExprAlias, AnyExprOp,
-            BetweenExprNegated, BinaryExprOp, CastExprDataType, ColumnExprColumn, CubeScanAliases,
-            CubeScanLimit, CubeScanTableName, DimensionName, EmptyRelationProduceOneRow,
-            FilterMemberMember, FilterMemberOp, FilterMemberValues, FilterOpOp, InListExprNegated,
-            JoinJoinConstraint, JoinJoinType, JoinLeftOn, JoinRightOn, LimitN, LiteralExprValue,
-            LiteralMemberValue, LogicalPlanLanguage, MeasureName, MemberErrorError, OrderAsc,
-            OrderMember, OuterColumnExprColumn, OuterColumnExprDataType, ProjectionAlias,
-            ScalarFunctionExprFun, ScalarUDFExprFun, ScalarVariableExprDataType,
-            ScalarVariableExprVariable, SegmentMemberMember, SortExprAsc, SortExprNullsFirst,
-            TableScanLimit, TableScanProjection, TableScanSourceTableName, TableScanTableName,
-            TableUDFExprFun, TimeDimensionDateRange, TimeDimensionGranularity, TimeDimensionName,
-            TryCastExprDataType, UnionAlias, WindowFunctionExprFun, WindowFunctionExprWindowFrame,
+            BetweenExprNegated, BinaryExprOp, CastExprDataType, ChangeUserMemberMember,
+            ColumnExprColumn, CubeScanAliases, CubeScanLimit, CubeScanTableName, DimensionName,
+            EmptyRelationProduceOneRow, FilterMemberMember, FilterMemberOp, FilterMemberValues,
+            FilterOpOp, InListExprNegated, JoinJoinConstraint, JoinJoinType, JoinLeftOn,
+            JoinRightOn, LimitN, LiteralExprValue, LiteralMemberValue, LogicalPlanLanguage,
+            MeasureName, MemberErrorError, OrderAsc, OrderMember, OuterColumnExprColumn,
+            OuterColumnExprDataType, ProjectionAlias, ScalarFunctionExprFun, ScalarUDFExprFun,
+            ScalarVariableExprDataType, ScalarVariableExprVariable, SegmentMemberMember,
+            SortExprAsc, SortExprNullsFirst, TableScanLimit, TableScanProjection,
+            TableScanSourceTableName, TableScanTableName, TableUDFExprFun, TimeDimensionDateRange,
+            TimeDimensionGranularity, TimeDimensionName, TryCastExprDataType, UnionAlias,
+            WindowFunctionExprFun, WindowFunctionExprWindowFrame,
         },
     },
     sql::auth_service::AuthContext,
@@ -1170,6 +1171,20 @@ impl LanguageToLogicalPlanConverter {
                                         MemberField::Literal(ScalarValue::Boolean(None)),
                                     ));
                                 }
+                                LogicalPlanLanguage::ChangeUser(params) => {
+                                    let expr = self.to_expr(params[1])?;
+                                    fields.push((
+                                        DFField::new(
+                                            Some(&table_name),
+                                            // TODO empty schema
+                                            &expr_name(&expr)?,
+                                            DataType::Boolean,
+                                            // TODO actually nullable. Just to fit tests
+                                            false,
+                                        ),
+                                        MemberField::Literal(ScalarValue::Boolean(None)),
+                                    ));
+                                }
                                 LogicalPlanLanguage::LiteralMember(params) => {
                                     let value =
                                         match_data_node!(node_by_id, params[0], LiteralMemberValue);
@@ -1205,6 +1220,8 @@ impl LanguageToLogicalPlanConverter {
                         {
                             let mut result = Vec::new();
                             let mut segments_result = Vec::new();
+                            let mut change_user_result = Vec::new();
+
                             for f in filters {
                                 match f {
                                     LogicalPlanLanguage::FilterOp(params) => {
@@ -1310,6 +1327,14 @@ impl LanguageToLogicalPlanConverter {
                                             SegmentMemberMember
                                         );
                                         segments_result.push(member);
+                                    }
+                                    LogicalPlanLanguage::ChangeUserMember(params) => {
+                                        let member = match_data_node!(
+                                            node_by_id,
+                                            params[0],
+                                            ChangeUserMemberMember
+                                        );
+                                        change_user_result.push(member);
                                     }
                                     x => panic!("Expected filter but found {:?}", x),
                                 }

@@ -3,14 +3,16 @@ import { displayCLIWarning, getEnv } from '@cubejs-backend/shared';
 
 import * as crypto from 'crypto';
 import type { ApiGateway } from './gateway';
-import type { CheckSQLAuthFn, ExtendedRequestContext } from './interfaces';
+import type { CheckSQLAuthFn, ExtendedRequestContext, CanSwitchSQLUserFn } from './interfaces';
 
 export type SQLServerOptions = {
   checkSqlAuth?: CheckSQLAuthFn,
+  canSwitchSqlUser?: CanSwitchSQLUserFn,
   sqlPort?: number,
   pgSqlPort?: number,
   sqlNonce?: string,
   sqlUser?: string,
+  sqlSuperUser?: string,
   sqlPassword?: string,
 };
 
@@ -33,6 +35,9 @@ export class SQLServer {
 
     const checkSqlAuth: CheckSQLAuthFn = (options.checkSqlAuth && this.wrapCheckSqlAuthFn(options.checkSqlAuth))
       || this.createDefaultCheckSqlAuthFn(options);
+
+    const canSwitchSqlUser: CanSwitchSQLUserFn = options.canSwitchSqlUser
+      || this.createDefaultCanSwitchSqlUserFn(options);
 
     this.sqlInterfaceInstance = await registerInterface({
       port: options.sqlPort,
@@ -65,9 +70,23 @@ export class SQLServer {
           }
         });
       },
-      load: async ({ request, user, query }) => {
-        // @todo Store security context in native
-        const { securityContext } = await checkSqlAuth(request, user);
+      load: async ({ request, user, changeUser, query }) => {
+        let userForQuery = user;
+
+        if (changeUser) {
+          // TODO: Cache?
+          const allowedToSwitch = await canSwitchSqlUser(user, changeUser);
+          if (allowedToSwitch) {
+            userForQuery = changeUser;
+          } else {
+            throw new Error(
+              `You cannot change __user from ${user} to ${user}, because it's not allowed.`
+            );
+          }
+        }
+
+        // TODO: Cache?
+        const { securityContext } = await checkSqlAuth(request, userForQuery);
         const context = await this.contextByNativeReq(request, securityContext, request.id);
 
         // eslint-disable-next-line no-async-promise-executor
@@ -102,6 +121,18 @@ export class SQLServer {
       }
 
       return response;
+    };
+  }
+
+  protected createDefaultCanSwitchSqlUserFn(options: SQLServerOptions): CanSwitchSQLUserFn {
+    const superUser = options.sqlSuperUser || getEnv('sqlSuperUser');
+
+    return async (current: string, _user: string) => {
+      if (superUser) {
+        return current === superUser;
+      }
+
+      return false;
     };
   }
 

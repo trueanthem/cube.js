@@ -5,7 +5,7 @@ use crate::{
             agg_fun_expr, aggr_aggr_expr, aggr_aggr_expr_empty_tail, aggr_group_expr,
             aggr_group_expr_empty_tail, aggregate, alias_expr,
             analysis::LogicalPlanAnalysis,
-            binary_expr, cast_expr, column_expr, column_name_to_member_name,
+            binary_expr, cast_expr, change_user_expr, column_expr, column_name_to_member_name,
             column_name_to_member_vec, cube_scan, cube_scan_filters_empty_tail, cube_scan_members,
             cube_scan_members_empty_tail, cube_scan_order_empty_tail, dimension_expr,
             expr_column_name, expr_column_name_with_relation, fun_expr, limit,
@@ -614,6 +614,9 @@ impl MemberRules {
         rules.extend(member_column_pushdown("segment", |column| {
             segment_expr("?name", column)
         }));
+        rules.extend(member_column_pushdown("change-user", |column| {
+            change_user_expr("?name", column)
+        }));
         rules.extend(member_column_pushdown("time-dimension", |column| {
             time_dimension_expr("?name", "?granularity", "?date_range", column)
         }));
@@ -652,6 +655,10 @@ impl MemberRules {
         rules.push(list_concat_terminal(
             "segment",
             segment_expr("?name", "?expr"),
+        ));
+        rules.push(list_concat_terminal(
+            "change-user",
+            change_user_expr("?name", "?expr"),
         ));
         rules.push(list_concat_terminal(
             "time-dimension",

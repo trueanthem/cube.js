@@ -227,6 +227,10 @@ crate::plan_to_language! {
             name: String,
             expr: Arc<Expr>,
         },
+        ChangeUser {
+            name: String,
+            expr: Arc<Expr>,
+        },
         LiteralMember {
             value: ScalarValue,
             expr: Arc<Expr>,
@@ -241,6 +245,9 @@ crate::plan_to_language! {
             values: Vec<String>,
         },
         SegmentMember {
+            member: String,
+        },
+        ChangeUserMember {
             member: String,
         },
         MemberError {
@@ -791,6 +798,10 @@ fn segment_member(member: impl Display) -> String {
     format!("(SegmentMember {})", member)
 }
 
+fn change_user_member(member: impl Display) -> String {
+    format!("(ChangeUserMember {})", member)
+}
+
 fn measure_expr(measure_name: impl Display, expr: impl Display) -> String {
     format!("(Measure {} {})", measure_name, expr)
 }
@@ -801,6 +812,10 @@ fn dimension_expr(name: impl Display, expr: impl Display) -> String {
 
 fn segment_expr(name: impl Display, expr: impl Display) -> String {
     format!("(Segment {} {})", name, expr)
+}
+
+fn change_user_expr(name: impl Display, expr: impl Display) -> String {
+    format!("(ChangeUser {} {})", name, expr)
 }
 
 fn literal_member(value: impl Display, expr: impl Display) -> String {
