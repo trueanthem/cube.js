@@ -49,11 +49,15 @@ export class ClickHouseQuery extends BaseQuery {
   }
 
   timeGroupedColumn(granularity, dimension) {
-    if (granularity === 'week') {
-      return `toDateTime(toMonday(${dimension}, '${this.timezone}'), '${this.timezone}')`;
-    } else {
-      const interval = GRANULARITY_TO_INTERVAL[granularity];
-      return `toDateTime(${granularity === 'second' ? 'toDateTime' : `toStartOf${interval}`}(${dimension}, '${this.timezone}'), '${this.timezone}')`;
+    switch (granularity) {
+      case 'second':
+        return `toDateTime(${dimension}, '${this.timezone}')`;
+      case 'week':
+        const weekMode = process.env.CUBEJS_CLICKHOUSE_WEEK_MODE || 0;
+        return `toDateTime(toStartOfWeek(${dimension}, ${weekMode}, '${this.timezone}'), '${this.timezone}')`;
+      default:
+        const interval = GRANULARITY_TO_INTERVAL[granularity];
+        return `toDateTime(toStartOf${interval}(${dimension}, '${this.timezone}'), '${this.timezone}')`;
     }
   }
 
