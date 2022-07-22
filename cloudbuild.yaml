@@ -12,6 +12,8 @@ steps:
   - -t
   - us-east1-docker.pkg.dev/$PROJECT_ID/cubejs/cube:$BRANCH_NAME$TAG_NAME
   - .
+  env:
+  - 'IMAGE_VERSION=v0.30.37.custom'
 
 # Push docker images to container registry
 images:
