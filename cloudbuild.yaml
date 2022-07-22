@@ -1,0 +1,18 @@
+#
+# Copyright (c) 2022. True Anthem, Inc.
+#
+# gcloud --project=build-217813 builds submit --config cloudbuild.yaml --substitutions TAG_NAME=local
+
+steps:
+- name: gcr.io/cloud-builders/docker
+  args:
+  - build
+  - -f
+  - packages/cubejs-docker/latest-alpine.Dockerfile
+  - -t
+  - us-east1-docker.pkg.dev/$PROJECT_ID/cubejs/cube:$BRANCH_NAME$TAG_NAME
+  - .
+
+# Push docker images to container registry
+images:
+- us-east1-docker.pkg.dev/$PROJECT_ID/cubejs/cube:$BRANCH_NAME$TAG_NAME
