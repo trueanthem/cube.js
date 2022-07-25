@@ -13,6 +13,8 @@ steps:
   - us-east1-docker.pkg.dev/$PROJECT_ID/cubejs/cube:$BRANCH_NAME$TAG_NAME
   - --build-arg=IMAGE_VERSION=v0.30.37.custom
   - ../..
+  dir: packages/cubejs-docker
+
 
 # Push docker images to container registry
 images:
