@@ -11,7 +11,7 @@ steps:
   - latest.Dockerfile
   - -t
   - us-east1-docker.pkg.dev/$PROJECT_ID/cubejs/cube:$BRANCH_NAME$TAG_NAME
-  - --build-arg=IMAGE_VERSION=v0.30.37.custom
+  - --build-arg=IMAGE_VERSION=v0.30.69.ta
   - ../..
   dir: packages/cubejs-docker
 
