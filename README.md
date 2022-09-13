@@ -97,6 +97,28 @@ There are many ways you can contribute to Cube! Here are a few possibilities:
 
 All sort of contributions are **welcome and extremely helpful** 🙌 Please refer to [the contribution guide](https://github.com/cube-js/cube.js/blob/master/CONTRIBUTING.md) for more information.
 
+## True Anthem Customizations
+
+The upstream repo has been customized in this fork as follows:
+
+* Support Clickhouse week mode that indicates whether Sunday is the beginning of the week or Monday is. The upstream
+  repo hardcodes this to Monday - which works fine for Europe and other parts of the world. However, in the US, Sunday
+  is considered the beginning of the week in a lot of applications. This customization provides an environment variable
+  CUBEJS_CLICKHOUSE_WEEK_MODE to specify this preference. This value maps to the Clickhouse `mode` parameter that is
+  documented [here](https://clickhouse.com/docs/en/sql-reference/functions/date-time-functions/#toweekdatemode).
+  This is a woraround until [this](https://github.com/cube-js/cube.js/issues/177) issue is resolved.
+* A cloudbuild.yaml file has been added to the packages/cubejs-docker directory to build this fork in the private
+  True Anthem GCP build project. In order to add the above customization to the latest release of cube, follow this
+  procedure:
+  * Switch to the master branch and sync with the upstream repo: 
+  ```
+  git checkout master && git fetch upstream && git merge upstream/master && git push
+  ``` 
+  * Switch to the custom branch (support_ch_week_mode).
+  * Rebase the branch on the tag which you want to apply the customization to e.g. v0.30.69.
+  * Update the version number in the cloudbuild.yaml file with the custom tag and commit.
+  * Tag this last commit with the tag number `<original tag number>.ta` e.g. `v0.30.69.ta`.
+  * This will kick off the cloud build for this newly committed tag.
 ## License
 
 Cube Client is [MIT licensed](./packages/cubejs-client-core/LICENSE).
